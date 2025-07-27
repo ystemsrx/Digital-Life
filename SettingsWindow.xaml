@@ -1,0 +1,570 @@
+﻿<Window x:Class="pet.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
+        Title="生物设置"
+        Height="800"
+        Width="520"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize"
+        Background="#FF1E1E1E"
+        FontFamily="Segoe UI"
+        AllowsTransparency="True"
+        WindowStyle="None"
+        BorderBrush="#FF404040"
+        BorderThickness="1">
+    
+    <Window.Resources>
+        <!-- 渐变画刷 -->
+        <LinearGradientBrush x:Key="AccentGradient" StartPoint="0,0" EndPoint="1,0">
+            <GradientStop Color="#FF6B73FF" Offset="0"/>
+            <GradientStop Color="#FF9B59B6" Offset="1"/>
+        </LinearGradientBrush>
+
+        <LinearGradientBrush x:Key="CardBackground" StartPoint="0,0" EndPoint="0,1">
+            <GradientStop Color="#FF2A2A2A" Offset="0"/>
+            <GradientStop Color="#FF252525" Offset="1"/>
+        </LinearGradientBrush>
+
+        <!-- 现代化滑块样式 -->
+        <Style x:Key="ModernSlider" TargetType="Slider">
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Margin" Value="8,5"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Slider">
+                        <Grid>
+                            <Border Name="TrackBackground"
+                                    Height="6"
+                                    Background="#FF404040"
+                                    CornerRadius="3"
+                                    VerticalAlignment="Center"/>
+                            <Border Name="PART_SelectionRange"
+                                    Height="6"
+                                    Background="{StaticResource AccentGradient}"
+                                    CornerRadius="3"
+                                    VerticalAlignment="Center"
+                                    HorizontalAlignment="Left"/>
+                            <Track Name="PART_Track">
+                                <Track.Thumb>
+                                    <Thumb>
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Ellipse Width="20" Height="20"
+                                                        Fill="{StaticResource AccentGradient}"
+                                                        Stroke="#FFFFFFFF"
+                                                        StrokeThickness="2">
+                                                    <Ellipse.Effect>
+                                                        <DropShadowEffect Color="Black" BlurRadius="8" ShadowDepth="2" Opacity="0.3"/>
+                                                    </Ellipse.Effect>
+                                                </Ellipse>
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 现代化标签样式 -->
+        <Style x:Key="ModernLabel" TargetType="Label">
+            <Setter Property="Foreground" Value="#FFE0E0E0"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <!-- 现代化文本块样式 -->
+        <Style x:Key="ModernTextBlock" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#FFAAAAAA"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalAlignment" Value="Right"/>
+            <Setter Property="Background" Value="#FF333333"/>
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="MinWidth" Value="60"/>
+            <Setter Property="TextAlignment" Value="Center"/>
+        </Style>
+
+        <!-- 现代化按钮样式 -->
+        <Style x:Key="ModernButton" TargetType="Button">
+            <Setter Property="Background" Value="{StaticResource AccentGradient}"/>
+            <Setter Property="Foreground" Value="#FFFFFFFF"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="20,12"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                CornerRadius="8">
+                            <Border.Effect>
+                                <DropShadowEffect Color="Black" BlurRadius="10" ShadowDepth="3" Opacity="0.2"/>
+                            </Border.Effect>
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="RenderTransform">
+                                    <Setter.Value>
+                                        <ScaleTransform ScaleX="1.05" ScaleY="1.05"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="RenderTransform">
+                                    <Setter.Value>
+                                        <ScaleTransform ScaleX="0.95" ScaleY="0.95"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 重置按钮样式 -->
+        <Style x:Key="ResetButton" TargetType="Button" BasedOn="{StaticResource ModernButton}">
+            <Setter Property="Background" Value="#FF444444"/>
+            <Setter Property="Foreground" Value="#FFCCCCCC"/>
+        </Style>
+
+        <!-- 分组标题样式 -->
+        <Style x:Key="SectionHeader" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#FFFFFFFF"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Margin" Value="0,20,0,15"/>
+        </Style>
+
+        <!-- 卡片样式 -->
+        <Style x:Key="SettingCard" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource CardBackground}"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Padding" Value="20"/>
+            <Setter Property="Margin" Value="0,8"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect Color="Black" BlurRadius="15" ShadowDepth="5" Opacity="0.1"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 窗口标题栏样式 -->
+        <Style x:Key="TitleBar" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource AccentGradient}"/>
+            <Setter Property="Height" Value="50"/>
+            <Setter Property="CornerRadius" Value="0"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 自定义标题栏 -->
+        <Border Grid.Row="0" Style="{StaticResource TitleBar}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="20,0">
+                    <TextBlock Text="⚙️" FontSize="20" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <TextBlock Text="生物设置"
+                               FontSize="18"
+                               FontWeight="Bold"
+                               Foreground="#FFFFFFFF"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <Button Grid.Column="1"
+                        Content="✕"
+                        Width="40"
+                        Height="40"
+                        Background="Transparent"
+                        Foreground="#FFFFFFFF"
+                        BorderThickness="0"
+                        FontSize="16"
+                        FontWeight="Bold"
+                        Margin="0,0,10,0"
+                        Click="OnCloseClick"
+                        Cursor="Hand">
+                    <Button.Style>
+                        <Style TargetType="Button">
+                            <Setter Property="Background" Value="Transparent"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border Background="{TemplateBinding Background}" CornerRadius="20">
+                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Background" Value="#33FFFFFF"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </Button.Style>
+                </Button>
+            </Grid>
+        </Border>
+
+        <!-- 设置内容 -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="25,20">
+            <StackPanel>
+                <!-- 运动参数卡片 -->
+                <TextBlock Text="🏃 运动参数" Style="{StaticResource SectionHeader}"/>
+                <Border Style="{StaticResource SettingCard}">
+                    <StackPanel>
+                        <!-- 移动速度 -->
+                        <Grid Margin="0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="140"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="80"/>
+                            </Grid.ColumnDefinitions>
+                            <Label Grid.Column="0" Content="移动速度:" Style="{StaticResource ModernLabel}"/>
+                            <Slider Grid.Column="1"
+                                    Name="SpeedSlider"
+                                    Minimum="0.1"
+                                    Maximum="2.0"
+                                    Value="0.3"
+                                    TickFrequency="0.1"
+                                    Style="{StaticResource ModernSlider}"
+                                    ValueChanged="OnSliderValueChanged"/>
+                            <Border Grid.Column="2"
+                                    Background="#FF333333"
+                                    CornerRadius="6"
+                                    Padding="8,4">
+                                <TextBlock Name="SpeedValue"
+                                           Text="0.3"
+                                           Style="{StaticResource ModernTextBlock}"
+                                           Background="Transparent"
+                                           Padding="0"/>
+                            </Border>
+                        </Grid>
+
+                        <!-- 旋转速度 -->
+                        <Grid Margin="0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="140"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="80"/>
+                            </Grid.ColumnDefinitions>
+                            <Label Grid.Column="0" Content="旋转速度:" Style="{StaticResource ModernLabel}"/>
+                            <Slider Grid.Column="1"
+                                    Name="RotationSlider"
+                                    Minimum="0.0001"
+                                    Maximum="0.01"
+                                    Value="0.001"
+                                    TickFrequency="0.0001"
+                                    Style="{StaticResource ModernSlider}"
+                                    ValueChanged="OnSliderValueChanged"/>
+                            <Border Grid.Column="2"
+                                    Background="#FF333333"
+                                    CornerRadius="6"
+                                    Padding="8,4">
+                                <TextBlock Name="RotationValue"
+                                           Text="0.001"
+                                           Style="{StaticResource ModernTextBlock}"
+                                           Background="Transparent"
+                                           Padding="0"/>
+                            </Border>
+                        </Grid>
+
+                        <!-- 游荡强度 -->
+                        <Grid Margin="0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="140"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="80"/>
+                            </Grid.ColumnDefinitions>
+                            <Label Grid.Column="0" Content="游荡强度:" Style="{StaticResource ModernLabel}"/>
+                            <Slider Grid.Column="1"
+                                    Name="WanderSlider"
+                                    Minimum="0.01"
+                                    Maximum="0.2"
+                                    Value="0.07"
+                                    TickFrequency="0.01"
+                                    Style="{StaticResource ModernSlider}"
+                                    ValueChanged="OnSliderValueChanged"/>
+                            <Border Grid.Column="2"
+                                    Background="#FF333333"
+                                    CornerRadius="6"
+                                    Padding="8,4">
+                                <TextBlock Name="WanderValue"
+                                           Text="0.07"
+                                           Style="{StaticResource ModernTextBlock}"
+                                           Background="Transparent"
+                                           Padding="0"/>
+                            </Border>
+                        </Grid>
+
+                        <!-- 边界排斥力 -->
+                        <Grid Margin="0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="140"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="80"/>
+                            </Grid.ColumnDefinitions>
+                            <Label Grid.Column="0" Content="边界排斥力:" Style="{StaticResource ModernLabel}"/>
+                            <Slider Grid.Column="1"
+                                    Name="RepulsionSlider"
+                                    Minimum="100"
+                                    Maximum="3000"
+                                    Value="1000"
+                                    TickFrequency="100"
+                                    Style="{StaticResource ModernSlider}"
+                                    ValueChanged="OnSliderValueChanged"/>
+                            <Border Grid.Column="2"
+                                    Background="#FF333333"
+                                    CornerRadius="6"
+                                    Padding="8,4">
+                                <TextBlock Name="RepulsionValue"
+                                           Text="1000"
+                                           Style="{StaticResource ModernTextBlock}"
+                                           Background="Transparent"
+                                           Padding="0"/>
+                            </Border>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- 外观参数卡片 -->
+                <TextBlock Text="🎨 外观参数" Style="{StaticResource SectionHeader}"/>
+                <Border Style="{StaticResource SettingCard}">
+                    <StackPanel>
+                        <!-- 点数量 -->
+                        <Grid Margin="0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="140"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="80"/>
+                            </Grid.ColumnDefinitions>
+                            <Label Grid.Column="0" Content="点数量:" Style="{StaticResource ModernLabel}"/>
+                            <Slider Grid.Column="1"
+                                    Name="PointsSlider"
+                                    Minimum="5000"
+                                    Maximum="20000"
+                                    Value="5000"
+                                    TickFrequency="1000"
+                                    Style="{StaticResource ModernSlider}"
+                                    ValueChanged="OnSliderValueChanged"/>
+                            <Border Grid.Column="2"
+                                    Background="#FF333333"
+                                    CornerRadius="6"
+                                    Padding="8,4">
+                                <TextBlock Name="PointsValue"
+                                           Text="5000"
+                                           Style="{StaticResource ModernTextBlock}"
+                                           Background="Transparent"
+                                           Padding="0"/>
+                            </Border>
+                        </Grid>
+
+                        <!-- 帧率 -->
+                        <Grid Margin="0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="140"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="80"/>
+                            </Grid.ColumnDefinitions>
+                            <Label Grid.Column="0" Content="帧率 (FPS):" Style="{StaticResource ModernLabel}"/>
+                            <Slider Grid.Column="1"
+                                    Name="FpsSlider"
+                                    Minimum="30"
+                                    Maximum="120"
+                                    Value="120"
+                                    TickFrequency="10"
+                                    Style="{StaticResource ModernSlider}"
+                                    ValueChanged="OnSliderValueChanged"/>
+                            <Border Grid.Column="2"
+                                    Background="#FF333333"
+                                    CornerRadius="6"
+                                    Padding="8,4">
+                                <TextBlock Name="FpsValue"
+                                           Text="120"
+                                           Style="{StaticResource ModernTextBlock}"
+                                           Background="Transparent"
+                                           Padding="0"/>
+                            </Border>
+                        </Grid>
+
+                        <!-- 透明度 -->
+                        <Grid Margin="0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="140"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="80"/>
+                            </Grid.ColumnDefinitions>
+                            <Label Grid.Column="0" Content="透明度:" Style="{StaticResource ModernLabel}"/>
+                            <Slider Grid.Column="1"
+                                    Name="OpacitySlider"
+                                    Minimum="0.1"
+                                    Maximum="1.0"
+                                    Value="0.8"
+                                    TickFrequency="0.1"
+                                    Style="{StaticResource ModernSlider}"
+                                    ValueChanged="OnSliderValueChanged"/>
+                            <Border Grid.Column="2"
+                                    Background="#FF333333"
+                                    CornerRadius="6"
+                                    Padding="8,4">
+                                <TextBlock Name="OpacityValue"
+                                           Text="80%"
+                                           Style="{StaticResource ModernTextBlock}"
+                                           Background="Transparent"
+                                           Padding="0"/>
+                            </Border>
+                        </Grid>
+
+                        <!-- 颜色选择 -->
+                        <Grid Margin="0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="140"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="80"/>
+                            </Grid.ColumnDefinitions>
+                            <Label Grid.Column="0" Content="颜色:" Style="{StaticResource ModernLabel}"/>
+                            <xctk:ColorPicker Grid.Column="1"
+                                              Name="ColorPicker"
+                                              SelectedColor="#FFDCDCDC"
+                                              ShowRecentColors="False"
+                                              ShowStandardColors="True"
+                                              ShowAvailableColors="True"
+                                              Height="30"
+                                              Margin="8,5"
+                                              SelectedColorChanged="OnColorChanged"/>
+                            <Border Grid.Column="2"
+                                    Background="#FF333333"
+                                    CornerRadius="6"
+                                    Padding="8,4">
+                                <TextBlock Text="RGB"
+                                           Style="{StaticResource ModernTextBlock}"
+                                           Background="Transparent"
+                                           Padding="0"/>
+                            </Border>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- 系统设置卡片 -->
+                <TextBlock Text="⚙️ 系统设置" Style="{StaticResource SectionHeader}" Margin="0,20,0,0"/>
+                <Border Style="{StaticResource SettingCard}">
+                    <StackPanel>
+                        <!-- 开机自启动 -->
+                        <Grid Margin="0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Orientation="Vertical">
+                                <Label Content="开机自启动:" Style="{StaticResource ModernLabel}" Margin="0,0,0,5"/>
+                                <TextBlock Text="启用后程序将在Windows启动时自动运行"
+                                          Foreground="#FFAAAAAA"
+                                          FontSize="11"
+                                          Margin="8,0,0,0"/>
+                            </StackPanel>
+                            <CheckBox Grid.Column="1"
+                                     Name="StartupCheckBox"
+                                     VerticalAlignment="Center"
+                                     Margin="10,0,0,0"
+                                     Checked="OnStartupCheckChanged"
+                                     Unchecked="OnStartupCheckChanged">
+                                <CheckBox.Style>
+                                    <Style TargetType="CheckBox">
+                                        <Setter Property="Foreground" Value="#FFCCCCCC"/>
+                                        <Setter Property="Background" Value="#FF333333"/>
+                                        <Setter Property="BorderBrush" Value="#FF555555"/>
+                                        <Setter Property="BorderThickness" Value="1"/>
+                                        <Setter Property="Padding" Value="4"/>
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="CheckBox">
+                                                    <Grid>
+                                                        <Border Name="Border"
+                                                               Background="{TemplateBinding Background}"
+                                                               BorderBrush="{TemplateBinding BorderBrush}"
+                                                               BorderThickness="{TemplateBinding BorderThickness}"
+                                                               CornerRadius="3"
+                                                               Width="20"
+                                                               Height="20">
+                                                            <Path Name="CheckMark"
+                                                                 Data="M 0 5 L 5 10 L 15 0"
+                                                                 Stroke="#FF00AA00"
+                                                                 StrokeThickness="2"
+                                                                 Visibility="Collapsed"
+                                                                 Margin="2"/>
+                                                        </Border>
+                                                    </Grid>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsChecked" Value="True">
+                                                            <Setter TargetName="CheckMark" Property="Visibility" Value="Visible"/>
+                                                            <Setter TargetName="Border" Property="Background" Value="#FF404040"/>
+                                                        </Trigger>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="Border" Property="BorderBrush" Value="#FF777777"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </CheckBox.Style>
+                            </CheckBox>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- 说明文字 -->
+                <Border Background="#FF2A2A2A"
+                        CornerRadius="8"
+                        Padding="15"
+                        Margin="0,20,0,0">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="💡" FontSize="16" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <TextBlock Text="提示：调整参数后会实时应用到生物上"
+                                  Foreground="#FFAAAAAA"
+                                  FontSize="12"
+                                  VerticalAlignment="Center"
+                                  TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- 按钮区域 -->
+        <Border Grid.Row="2"
+                Background="#FF252525"
+                Padding="25,20">
+            <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Center">
+                <Button Name="ResetButton"
+                        Content="🔄 恢复默认"
+                        Style="{StaticResource ResetButton}"
+                        Margin="0,0,15,0"
+                        Click="OnResetClick"/>
+                <Button Name="CloseButton"
+                        Content="✅ 应用设置"
+                        Style="{StaticResource ModernButton}"
+                        Click="OnCloseClick"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

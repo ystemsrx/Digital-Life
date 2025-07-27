@@ -25,13 +25,16 @@ namespace pet
         public double RotationSpeed { get; set; } = 0.001;
         public double WanderStrength { get; set; } = 0.07;
         public double WallRepulsionStrength { get; set; } = 1000.0;
-        public int NumPoints { get; set; } = 5000;
-        public int TargetFps { get; set; } = 120;
-        public double Opacity { get; set; } = 0.8;
+        public int NumPoints { get; set; } = 2000;  // 恢复默认值
+        public int TargetFps { get; set; } = 90;    // 设置默认帧率为90
+        public double Opacity { get; set; } = 0.3;
         public PetColor PetColor { get; set; } = new PetColor { R = 220, G = 220, B = 220 };
-        
+
         // 开机自启动设置
         public bool StartWithWindows { get; set; } = false;
+
+        // 自动性能优化设置
+        public bool AutoPerformanceOptimization { get; set; } = false;
     }
 
     /// <summary>
@@ -122,7 +125,7 @@ namespace pet
         {
             try
             {
-                using (RegistryKey? key = Registry.CurrentUser.OpenSubKey(REGISTRY_KEY_PATH, true))
+                using (RegistryKey key = Registry.CurrentUser.OpenSubKey(REGISTRY_KEY_PATH, true))
                 {
                     if (key != null)
                     {
@@ -175,11 +178,11 @@ namespace pet
         {
             try
             {
-                using (RegistryKey? key = Registry.CurrentUser.OpenSubKey(REGISTRY_KEY_PATH, false))
+                using (RegistryKey key = Registry.CurrentUser.OpenSubKey(REGISTRY_KEY_PATH, false))
                 {
                     if (key != null)
                     {
-                        object? value = key.GetValue(APP_NAME);
+                        object value = key.GetValue(APP_NAME);
                         return value != null;
                     }
                 }

@@ -251,12 +251,19 @@
                             <Border Grid.Column="2"
                                     Background="#FF333333"
                                     CornerRadius="6"
-                                    Padding="8,4">
-                                <TextBlock Name="SpeedValue"
-                                           Text="0.3"
-                                           Style="{StaticResource ModernTextBlock}"
-                                           Background="Transparent"
-                                           Padding="0"/>
+                                    BorderBrush="#FF555555"
+                                    BorderThickness="1">
+                                <TextBox Name="SpeedTextBox"
+                                         Text="0.3"
+                                         Background="Transparent"
+                                         Foreground="#FFAAAAAA"
+                                         BorderThickness="0"
+                                         Padding="8,4"
+                                         FontSize="12"
+                                         FontWeight="SemiBold"
+                                         TextAlignment="Center"
+                                         VerticalContentAlignment="Center"
+                                         TextChanged="OnTextBoxValueChanged"/>
                             </Border>
                         </Grid>
 
@@ -360,7 +367,7 @@
                             <Label Grid.Column="0" Content="点数量:" Style="{StaticResource ModernLabel}"/>
                             <Slider Grid.Column="1"
                                     Name="PointsSlider"
-                                    Minimum="5000"
+                                    Minimum="2000"
                                     Maximum="20000"
                                     Value="5000"
                                     TickFrequency="1000"
@@ -369,12 +376,19 @@
                             <Border Grid.Column="2"
                                     Background="#FF333333"
                                     CornerRadius="6"
-                                    Padding="8,4">
-                                <TextBlock Name="PointsValue"
-                                           Text="5000"
-                                           Style="{StaticResource ModernTextBlock}"
-                                           Background="Transparent"
-                                           Padding="0"/>
+                                    BorderBrush="#FF555555"
+                                    BorderThickness="1">
+                                <TextBox Name="PointsTextBox"
+                                         Text="5000"
+                                         Background="Transparent"
+                                         Foreground="#FFAAAAAA"
+                                         BorderThickness="0"
+                                         Padding="8,4"
+                                         FontSize="12"
+                                         FontWeight="SemiBold"
+                                         TextAlignment="Center"
+                                         VerticalContentAlignment="Center"
+                                         TextChanged="OnTextBoxValueChanged"/>
                             </Border>
                         </Grid>
 
@@ -390,19 +404,26 @@
                                     Name="FpsSlider"
                                     Minimum="30"
                                     Maximum="120"
-                                    Value="120"
+                                    Value="90"
                                     TickFrequency="10"
                                     Style="{StaticResource ModernSlider}"
                                     ValueChanged="OnSliderValueChanged"/>
                             <Border Grid.Column="2"
                                     Background="#FF333333"
                                     CornerRadius="6"
-                                    Padding="8,4">
-                                <TextBlock Name="FpsValue"
-                                           Text="120"
-                                           Style="{StaticResource ModernTextBlock}"
-                                           Background="Transparent"
-                                           Padding="0"/>
+                                    BorderBrush="#FF555555"
+                                    BorderThickness="1">
+                                <TextBox Name="FpsTextBox"
+                                         Text="90"
+                                         Background="Transparent"
+                                         Foreground="#FFAAAAAA"
+                                         BorderThickness="0"
+                                         Padding="8,4"
+                                         FontSize="12"
+                                         FontWeight="SemiBold"
+                                         TextAlignment="Center"
+                                         VerticalContentAlignment="Center"
+                                         TextChanged="OnTextBoxValueChanged"/>
                             </Border>
                         </Grid>
 
@@ -487,6 +508,68 @@
                                      Margin="10,0,0,0"
                                      Checked="OnStartupCheckChanged"
                                      Unchecked="OnStartupCheckChanged">
+                                <CheckBox.Style>
+                                    <Style TargetType="CheckBox">
+                                        <Setter Property="Foreground" Value="#FFCCCCCC"/>
+                                        <Setter Property="Background" Value="#FF333333"/>
+                                        <Setter Property="BorderBrush" Value="#FF555555"/>
+                                        <Setter Property="BorderThickness" Value="1"/>
+                                        <Setter Property="Padding" Value="4"/>
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="CheckBox">
+                                                    <Grid>
+                                                        <Border Name="Border"
+                                                               Background="{TemplateBinding Background}"
+                                                               BorderBrush="{TemplateBinding BorderBrush}"
+                                                               BorderThickness="{TemplateBinding BorderThickness}"
+                                                               CornerRadius="3"
+                                                               Width="20"
+                                                               Height="20">
+                                                            <Path Name="CheckMark"
+                                                                 Data="M 0 5 L 5 10 L 15 0"
+                                                                 Stroke="#FF00AA00"
+                                                                 StrokeThickness="2"
+                                                                 Visibility="Collapsed"
+                                                                 Margin="2"/>
+                                                        </Border>
+                                                    </Grid>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsChecked" Value="True">
+                                                            <Setter TargetName="CheckMark" Property="Visibility" Value="Visible"/>
+                                                            <Setter TargetName="Border" Property="Background" Value="#FF404040"/>
+                                                        </Trigger>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="Border" Property="BorderBrush" Value="#FF777777"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </CheckBox.Style>
+                            </CheckBox>
+                        </Grid>
+
+                        <!-- 自动性能优化 -->
+                        <Grid Margin="0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Orientation="Vertical">
+                                <Label Content="自动性能优化:" Style="{StaticResource ModernLabel}" Margin="0,0,0,5"/>
+                                <TextBlock Text="根据实际FPS自动调整质量设置以保持流畅运行"
+                                          Foreground="#FFAAAAAA"
+                                          FontSize="11"
+                                          Margin="8,0,0,0"/>
+                            </StackPanel>
+                            <CheckBox Grid.Column="1"
+                                     Name="AutoOptimizeCheckBox"
+                                     VerticalAlignment="Center"
+                                     Margin="10,0,0,0"
+                                     Checked="OnAutoOptimizeCheckChanged"
+                                     Unchecked="OnAutoOptimizeCheckChanged">
                                 <CheckBox.Style>
                                     <Style TargetType="CheckBox">
                                         <Setter Property="Foreground" Value="#FFCCCCCC"/>

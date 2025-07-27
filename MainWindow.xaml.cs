@@ -22,8 +22,8 @@ namespace pet
         private const int WS_EX_TRANSPARENT = 0x00000020;
 
         // System tray components
-        private NotifyIcon? notifyIcon;
-        private ContextMenuStrip? contextMenu;
+        private NotifyIcon notifyIcon;
+        private ContextMenuStrip contextMenu;
 
         // Win32 API imports
         [DllImport("user32.dll")]
@@ -33,22 +33,22 @@ namespace pet
         private static extern int SetWindowLong(IntPtr hwnd, int index, int newStyle);
 
         // Pet configuration parameters (now mutable for settings)
-        private int numPoints = 5000;  // 调整默认值到最低
-        private int targetFps = 120;   // 调整默认值到最高
+        private int numPoints = 2000;  // 恢复默认值
+        private int targetFps = 90;    // 设置默认帧率为90
         private double petSpeed = 0.3;
         private double rotationSpeed = 0.001;
         private double wanderStrength = 0.07;
         private double wallRepulsionStrength = 1000.0;
-        private double opacity = 0.8;  // 新增透明度参数
+        private double opacity = 0.3;  // 新增透明度参数
         private PetColor petColor = new PetColor { R = 220, G = 220, B = 220 };  // 新增颜色参数
         private const double BUFFER_DISTANCE = 200.0;
         private const double MARGIN = 10.0;
 
         // 应用设置
-        private AppSettings appSettings = null!;
+        private AppSettings appSettings;
 
         // Settings window
-        private SettingsWindow? settingsWindow;
+        private SettingsWindow settingsWindow;
 
         // Pet state variables
         private double petX;
@@ -59,23 +59,42 @@ namespace pet
         private double tStep = Math.PI / 240.0;
 
         // Pre-calculated arrays for performance
-        private double[] xArray = null!;
-        private double[] yArray = null!;
+        private double[] xArray;
+        private double[] yArray;
 
-        // High-performance WPF rendering using DrawingVisual
-        private DrawingVisual drawingVisual = null!;
-        private RenderTargetBitmap renderBitmap = null!;
+        // 优化的渲染系统
+        private WriteableBitmap writeableBitmap;
+        private byte[] pixelBuffer;
+        private int stride;
+        private Int32Rect dirtyRect;
 
         // Pre-calculated points for batch drawing
-        private System.Windows.Point[] fishPoints = null!;
+        private System.Windows.Point[] fishPoints;
         private int validPointCount = 0;
 
+        // 缓存的渲染对象以减少GC压力
+        private SolidColorBrush cachedBrush;
+        private System.Windows.Media.Color cachedColor;
+
+        // 性能监控
+        private int frameCount = 0;
+        private DateTime lastFpsUpdate = DateTime.Now;
+        private double currentFps = 0;
+
         // Random generator
-        private Random random = null!;
+        private Random random;
 
         // Screen dimensions
         private int screenWidth;
         private int screenHeight;
+
+        // 渲染优化标志
+        private bool needsFullRedraw = true;
+        private double lastPetX, lastPetY;
+
+        // 性能模式设置
+        private bool useRegionalUpdate = false; // 默认关闭区域更新，避免轨迹问题
+        private bool autoPerformanceOptimization = false; // 默认关闭自动性能优化
 
         public MainWindow()
         {
@@ -101,6 +120,7 @@ namespace pet
                 targetFps = appSettings.TargetFps;
                 opacity = appSettings.Opacity;
                 petColor = appSettings.PetColor;
+                autoPerformanceOptimization = appSettings.AutoPerformanceOptimization;
 
                 // 更新目标帧时间
                 targetFrameTime = TimeSpan.FromMilliseconds(1000.0 / targetFps);
@@ -122,6 +142,8 @@ namespace pet
             // Initialize pet position and angle
             petX = screenWidth / 2.0;
             petY = screenHeight / 2.0;
+            lastPetX = petX;
+            lastPetY = petY;
             random = new Random();
             petAngle = random.NextDouble() * 2 * Math.PI;
             petOrientationAngle = petAngle;
@@ -129,15 +151,40 @@ namespace pet
             // Pre-calculate arrays for fish shape
             InitializeFishArrays();
 
-            // Initialize high-performance WPF rendering
-            drawingVisual = new DrawingVisual();
-            renderBitmap = new RenderTargetBitmap(screenWidth, screenHeight, 96, 96, PixelFormats.Pbgra32);
-            fishPoints = new System.Windows.Point[numPoints];
-
-            PetImage.Source = renderBitmap;
+            // Initialize optimized WriteableBitmap rendering
+            InitializeOptimizedRendering();
 
             // Use CompositionTarget.Rendering for better performance
             CompositionTarget.Rendering += OnRendering;
+        }
+
+        private void InitializeOptimizedRendering()
+        {
+            // 使用WriteableBitmap替代RenderTargetBitmap以获得更好的性能
+            writeableBitmap = new WriteableBitmap(screenWidth, screenHeight, 96, 96, PixelFormats.Bgra32, null);
+            PetImage.Source = writeableBitmap;
+
+            // 计算stride和初始化像素缓冲区
+            stride = writeableBitmap.PixelWidth * (writeableBitmap.Format.BitsPerPixel / 8);
+            pixelBuffer = new byte[stride * writeableBitmap.PixelHeight];
+
+            // 初始化脏矩形
+            dirtyRect = new Int32Rect(0, 0, screenWidth, screenHeight);
+
+            // 预分配点数组
+            fishPoints = new System.Windows.Point[numPoints];
+
+            // 缓存渲染对象
+            UpdateCachedRenderingObjects();
+        }
+
+        private void UpdateCachedRenderingObjects()
+        {
+            // 创建并缓存brush以减少GC压力
+            cachedColor = System.Windows.Media.Color.FromRgb(petColor.R, petColor.G, petColor.B);
+            cachedColor.A = (byte)(opacity * 255);
+            cachedBrush = new SolidColorBrush(cachedColor);
+            cachedBrush.Freeze(); // 冻结以提高性能
         }
 
         private void InitializeSystemTray()
@@ -174,7 +221,7 @@ namespace pet
             return System.Drawing.Icon.FromHandle(bitmap.GetHicon());
         }
 
-        private void MainWindow_StateChanged(object? sender, EventArgs e)
+        private void MainWindow_StateChanged(object sender, EventArgs e)
         {
             // Hide window when minimized
             if (this.WindowState == WindowState.Minimized)
@@ -183,10 +230,11 @@ namespace pet
             }
         }
 
-        private void OnExitClick(object? sender, EventArgs e)
+        private void OnExitClick(object sender, EventArgs e)
         {
             // Clean up and exit
-            notifyIcon?.Dispose();
+            if (notifyIcon != null)
+                notifyIcon.Dispose();
             System.Windows.Application.Current.Shutdown();
         }
 
@@ -207,21 +255,55 @@ namespace pet
         }
 
         private DateTime lastRenderTime = DateTime.MinValue;
-        private TimeSpan targetFrameTime = TimeSpan.FromMilliseconds(1000.0 / 80);
+        private TimeSpan targetFrameTime = TimeSpan.FromMilliseconds(1000.0 / 90);
 
-        private void OnRendering(object? sender, EventArgs e)
+        private void OnRendering(object sender, EventArgs e)
         {
             DateTime now = DateTime.Now;
             if (now - lastRenderTime >= targetFrameTime)
             {
                 UpdatePetState();
-                DrawPetOptimized();
+
+                // 使用完全清除模式确保没有轨迹残留
+                DrawPetOptimizedV2();
+
+                UpdateFpsCounter();
                 lastRenderTime = now;
+            }
+        }
+
+        private DateTime lastAutoOptimize = DateTime.MinValue;
+
+        private void UpdateFpsCounter()
+        {
+            frameCount++;
+            var elapsed = DateTime.Now - lastFpsUpdate;
+            if (elapsed.TotalSeconds >= 1.0)
+            {
+                currentFps = frameCount / elapsed.TotalSeconds;
+                frameCount = 0;
+                lastFpsUpdate = DateTime.Now;
+
+                // 只有在启用自动性能优化时才检查
+                if (autoPerformanceOptimization && (DateTime.Now - lastAutoOptimize).TotalSeconds >= 5.0)
+                {
+                    AutoOptimizePerformance();
+                    lastAutoOptimize = DateTime.Now;
+                }
+
+                // 可选：在调试时输出FPS信息
+                #if DEBUG
+                System.Diagnostics.Debug.WriteLine($"FPS: {currentFps:F1}, Points: {validPointCount}");
+                #endif
             }
         }
 
         private void UpdatePetState()
         {
+            // 保存上一帧位置用于优化渲染
+            lastPetX = petX;
+            lastPetY = petY;
+
             // Add random wandering to pet angle
             petAngle += (random.NextDouble() - 0.5) * 2 * wanderStrength;
 
@@ -240,6 +322,10 @@ namespace pet
 
             // Update animation time
             t += tStep;
+
+            // 检查是否需要完全重绘（位置变化较大时）
+            double distanceMoved = Math.Sqrt((petX - lastPetX) * (petX - lastPetX) + (petY - lastPetY) * (petY - lastPetY));
+            needsFullRedraw = distanceMoved > 5.0; // 如果移动距离超过5像素则完全重绘
         }
 
         private void CheckBounds()
@@ -352,68 +438,291 @@ namespace pet
             return Math.Max(0.0, Math.Min(1.0, force));
         }
 
-        private void DrawPetOptimized()
+        private void DrawPetOptimizedV2()
         {
+            // 完全清除WriteableBitmap，确保没有任何残留
+            writeableBitmap.Lock();
+            try
+            {
+                // 使用unsafe代码直接清除后备缓冲区
+                unsafe
+                {
+                    IntPtr backBuffer = writeableBitmap.BackBuffer;
+                    int bufferSize = writeableBitmap.PixelHeight * writeableBitmap.BackBufferStride;
+
+                    // 快速清零整个缓冲区
+                    byte* ptr = (byte*)backBuffer.ToPointer();
+                    for (int i = 0; i < bufferSize; i++)
+                    {
+                        ptr[i] = 0;
+                    }
+                }
+
+                // Pre-calculate common values
+                double cosO = Math.Cos(petOrientationAngle - Math.PI / 2);
+                double sinO = Math.Sin(petOrientationAngle - Math.PI / 2);
+
+                // Calculate fish shape points with optimized math
+                validPointCount = 0;
+                int minX = screenWidth, maxX = 0, minY = screenHeight, maxY = 0;
+
+                // 预计算常用值以减少重复计算
+                double t2 = t * 2;
+
+                for (int i = 0; i < numPoints; i++)
+                {
+                    double x = xArray[i];
+                    double y = yArray[i];
+
+                    // 优化的数学公式计算
+                    double y2MinusT = y * 2 - t;
+                    double sinY2MinusT = Math.Sin(y2MinusT);
+                    double k = (4 + sinY2MinusT * 3) * Math.Cos(x / 29);
+                    double e = y / 8 - 13;
+                    double d = Math.Sqrt(k * k + e * e);
+
+                    // 简化复杂计算
+                    double k2 = k * 2;
+                    double sinK2 = Math.Sin(k2);
+                    double yDiv25 = y / 25;
+                    double sinYDiv25 = Math.Sin(yDiv25);
+                    double e9MinusD3PlusT2 = e * 9 - d * 3 + t2;
+                    double sinE9 = Math.Sin(e9MinusD3PlusT2);
+
+                    double q = 3 * sinK2 + 0.3 / (k + double.Epsilon) + sinYDiv25 * k * (9 + 4 * sinE9);
+                    double c = d - t;
+                    double localU = q + 30 * Math.Cos(c) + 200;
+                    double localV = q * Math.Sin(c) + 39 * d - 220;
+
+                    // Center and rotate
+                    double centeredU = localU - 200;
+                    double centeredV = -localV + 220;
+                    double rotatedU = centeredU * cosO - centeredV * sinO;
+                    double rotatedV = centeredU * sinO + centeredV * cosO;
+
+                    // Transform to screen coordinates
+                    int screenU = (int)(rotatedU + petX);
+                    int screenV = (int)(rotatedV + petY);
+
+                    // Store valid points and track bounding box
+                    if (screenU >= 0 && screenU < screenWidth && screenV >= 0 && screenV < screenHeight)
+                    {
+                        fishPoints[validPointCount] = new System.Windows.Point(screenU, screenV);
+                        validPointCount++;
+
+                        // 更新边界框
+                        if (screenU < minX) minX = screenU;
+                        if (screenU > maxX) maxX = screenU;
+                        if (screenV < minY) minY = screenV;
+                        if (screenV > maxY) maxY = screenV;
+                    }
+                }
+
+                // 直接写入后备缓冲区
+                DrawPointsToBackBuffer();
+
+                // 标记整个区域为脏区域
+                writeableBitmap.AddDirtyRect(new Int32Rect(0, 0, screenWidth, screenHeight));
+            }
+            finally
+            {
+                writeableBitmap.Unlock();
+            }
+        }
+
+        private void DrawPointsToBackBuffer()
+        {
+            // 预计算颜色值
+            byte colorB = petColor.B;
+            byte colorG = petColor.G;
+            byte colorR = petColor.R;
+            byte colorA = (byte)(opacity * 255);
+
+            // 直接写入WriteableBitmap的后备缓冲区
+            unsafe
+            {
+                IntPtr backBuffer = writeableBitmap.BackBuffer;
+                int backBufferStride = writeableBitmap.BackBufferStride;
+
+                for (int i = 0; i < validPointCount; i++)
+                {
+                    int x = (int)fishPoints[i].X;
+                    int y = (int)fishPoints[i].Y;
+
+                    if (x >= 0 && x < screenWidth && y >= 0 && y < screenHeight)
+                    {
+                        // 计算像素位置
+                        IntPtr pixelPtr = backBuffer + y * backBufferStride + x * 4;
+                        byte* pixel = (byte*)pixelPtr.ToPointer();
+
+                        // 写入BGRA值
+                        pixel[0] = colorB; // Blue
+                        pixel[1] = colorG; // Green
+                        pixel[2] = colorR; // Red
+                        pixel[3] = colorA; // Alpha
+                    }
+                }
+            }
+        }
+
+
+
+        // 新增：区域更新渲染方法，只更新鱼所在的区域
+        private void DrawPetWithRegionalUpdate()
+        {
+            // 计算更大的清除区域以确保完全清除轨迹
+            int fishSize = 400; // 增大清除区域
+            int clearX = Math.Max(0, (int)lastPetX - fishSize);
+            int clearY = Math.Max(0, (int)lastPetY - fishSize);
+            int clearWidth = Math.Min(screenWidth - clearX, fishSize * 2);
+            int clearHeight = Math.Min(screenHeight - clearY, fishSize * 2);
+
+            // 清除上一帧鱼所在的区域
+            ClearRegion(clearX, clearY, clearWidth, clearHeight);
+
+            // 同时清除当前鱼位置的区域（预防性清除）
+            int currentClearX = Math.Max(0, (int)petX - fishSize);
+            int currentClearY = Math.Max(0, (int)petY - fishSize);
+            int currentClearWidth = Math.Min(screenWidth - currentClearX, fishSize * 2);
+            int currentClearHeight = Math.Min(screenHeight - currentClearY, fishSize * 2);
+
+            if (currentClearX != clearX || currentClearY != clearY)
+            {
+                ClearRegion(currentClearX, currentClearY, currentClearWidth, currentClearHeight);
+            }
+
             // Pre-calculate common values
             double cosO = Math.Cos(petOrientationAngle - Math.PI / 2);
             double sinO = Math.Sin(petOrientationAngle - Math.PI / 2);
 
             // Calculate fish shape points
             validPointCount = 0;
+            int minX = screenWidth, maxX = 0, minY = screenHeight, maxY = 0;
+
+            double t2 = t * 2;
+
             for (int i = 0; i < numPoints; i++)
             {
                 double x = xArray[i];
                 double y = yArray[i];
 
-                // Complex mathematical formula for fish shape
-                double k = (4 + Math.Sin(y * 2 - t) * 3) * Math.Cos(x / 29);
+                // 数学公式计算（与之前相同）
+                double y2MinusT = y * 2 - t;
+                double sinY2MinusT = Math.Sin(y2MinusT);
+                double k = (4 + sinY2MinusT * 3) * Math.Cos(x / 29);
                 double e = y / 8 - 13;
                 double d = Math.Sqrt(k * k + e * e);
-                double q = 3 * Math.Sin(k * 2) + 0.3 / (k + double.Epsilon) +
-                          Math.Sin(y / 25) * k * (9 + 4 * Math.Sin(e * 9 - d * 3 + t * 2));
+
+                double k2 = k * 2;
+                double sinK2 = Math.Sin(k2);
+                double yDiv25 = y / 25;
+                double sinYDiv25 = Math.Sin(yDiv25);
+                double e9MinusD3PlusT2 = e * 9 - d * 3 + t2;
+                double sinE9 = Math.Sin(e9MinusD3PlusT2);
+
+                double q = 3 * sinK2 + 0.3 / (k + double.Epsilon) + sinYDiv25 * k * (9 + 4 * sinE9);
                 double c = d - t;
                 double localU = q + 30 * Math.Cos(c) + 200;
                 double localV = q * Math.Sin(c) + 39 * d - 220;
 
-                // Center and rotate
                 double centeredU = localU - 200;
                 double centeredV = -localV + 220;
                 double rotatedU = centeredU * cosO - centeredV * sinO;
                 double rotatedV = centeredU * sinO + centeredV * cosO;
 
-                // Transform to screen coordinates
-                double screenU = rotatedU + petX;
-                double screenV = rotatedV + petY;
+                int screenU = (int)(rotatedU + petX);
+                int screenV = (int)(rotatedV + petY);
 
-                // Store valid points
                 if (screenU >= 0 && screenU < screenWidth && screenV >= 0 && screenV < screenHeight)
                 {
                     fishPoints[validPointCount] = new System.Windows.Point(screenU, screenV);
                     validPointCount++;
+
+                    if (screenU < minX) minX = screenU;
+                    if (screenU > maxX) maxX = screenU;
+                    if (screenV < minY) minY = screenV;
+                    if (screenV > maxY) maxY = screenV;
                 }
             }
 
-            // Draw using WPF DrawingVisual
-            using (DrawingContext dc = drawingVisual.RenderOpen())
+            // 绘制新的鱼到像素缓冲区
+            DrawPointsToPixelBuffer();
+
+            // 更新更大的区域以确保完全清除轨迹
+            if (validPointCount > 0)
             {
-                // Clear with transparent background
-                dc.DrawRectangle(System.Windows.Media.Brushes.Transparent, null, new Rect(0, 0, screenWidth, screenHeight));
+                // 计算需要更新的总区域（包括清除区域和新绘制区域）
+                int updateX = Math.Max(0, Math.Min(clearX, minX - 20));
+                int updateY = Math.Max(0, Math.Min(clearY, minY - 20));
+                int updateWidth = Math.Min(screenWidth - updateX,
+                    Math.Max(clearX + clearWidth, maxX + 20) - updateX);
+                int updateHeight = Math.Min(screenHeight - updateY,
+                    Math.Max(clearY + clearHeight, maxY + 20) - updateY);
 
-                // Draw fish points efficiently with dynamic color and opacity
-                var color = System.Windows.Media.Color.FromRgb(petColor.R, petColor.G, petColor.B);
-                color.A = (byte)(opacity * 255); // Apply opacity
-                var brush = new SolidColorBrush(color);
-                brush.Freeze(); // Improve performance
+                // 确保更新区域不会超出屏幕边界
+                updateWidth = Math.Max(0, Math.Min(updateWidth, screenWidth - updateX));
+                updateHeight = Math.Max(0, Math.Min(updateHeight, screenHeight - updateY));
 
-                for (int i = 0; i < validPointCount; i++)
+                if (updateWidth > 0 && updateHeight > 0)
                 {
-                    dc.DrawRectangle(brush, null, new Rect(fishPoints[i].X, fishPoints[i].Y, 1, 1));
+                    var updateRect = new Int32Rect(updateX, updateY, updateWidth, updateHeight);
+                    writeableBitmap.WritePixels(updateRect, pixelBuffer, stride,
+                        updateX * 4 + updateY * stride);
                 }
             }
+            else
+            {
+                // 如果没有有效点，至少更新清除区域
+                if (clearWidth > 0 && clearHeight > 0)
+                {
+                    var clearRect = new Int32Rect(clearX, clearY, clearWidth, clearHeight);
+                    writeableBitmap.WritePixels(clearRect, pixelBuffer, stride,
+                        clearX * 4 + clearY * stride);
+                }
+            }
+        }
 
-            // Render to bitmap
-            renderBitmap.Clear();
-            renderBitmap.Render(drawingVisual);
+        private void DrawPointsToPixelBuffer()
+        {
+            // 预计算颜色值
+            byte colorB = petColor.B;
+            byte colorG = petColor.G;
+            byte colorR = petColor.R;
+            byte colorA = (byte)(opacity * 255);
+
+            // 直接写入像素缓冲区
+            for (int i = 0; i < validPointCount; i++)
+            {
+                int x = (int)fishPoints[i].X;
+                int y = (int)fishPoints[i].Y;
+
+                if (x >= 0 && x < screenWidth && y >= 0 && y < screenHeight)
+                {
+                    int pixelIndex = y * stride + x * 4; // BGRA32格式，每像素4字节
+
+                    // 写入BGRA值
+                    pixelBuffer[pixelIndex] = colorB;     // Blue
+                    pixelBuffer[pixelIndex + 1] = colorG; // Green
+                    pixelBuffer[pixelIndex + 2] = colorR; // Red
+                    pixelBuffer[pixelIndex + 3] = colorA; // Alpha
+                }
+            }
+        }
+
+        private void ClearRegion(int x, int y, int width, int height)
+        {
+            // 清除指定区域的像素
+            for (int row = y; row < y + height && row < screenHeight; row++)
+            {
+                for (int col = x; col < x + width && col < screenWidth; col++)
+                {
+                    int pixelIndex = row * stride + col * 4;
+                    pixelBuffer[pixelIndex] = 0;     // Blue
+                    pixelBuffer[pixelIndex + 1] = 0; // Green
+                    pixelBuffer[pixelIndex + 2] = 0; // Red
+                    pixelBuffer[pixelIndex + 3] = 0; // Alpha (透明)
+                }
+            }
         }
 
         private void InitializeFishArrays()
@@ -428,7 +737,7 @@ namespace pet
             }
         }
 
-        private void OnSettingsClick(object? sender, EventArgs e)
+        private void OnSettingsClick(object sender, EventArgs e)
         {
             if (settingsWindow == null || !settingsWindow.IsVisible)
             {
@@ -455,10 +764,55 @@ namespace pet
         public int GetTargetFps() => targetFps;
         public double GetOpacity() => opacity;
         public PetColor GetPetColor() => petColor;
+        public bool GetUseRegionalUpdate() => useRegionalUpdate;
+        public bool GetAutoPerformanceOptimization() => autoPerformanceOptimization;
+
+        // 性能优化预设
+        public void ApplyPerformancePreset(string preset)
+        {
+            switch (preset.ToLower())
+            {
+                case "high_performance":
+                    // 高性能模式：最低GPU负载
+                    UpdatePetSettings(petSpeed, rotationSpeed, wanderStrength, wallRepulsionStrength,
+                        800, 30, opacity, petColor); // 800点，30FPS
+                    break;
+
+                case "balanced":
+                    // 平衡模式：中等质量和性能
+                    UpdatePetSettings(petSpeed, rotationSpeed, wanderStrength, wallRepulsionStrength,
+                        1500, 45, opacity, petColor); // 1500点，45FPS
+                    break;
+
+                case "high_quality":
+                    // 高质量模式：最佳视觉效果
+                    UpdatePetSettings(petSpeed, rotationSpeed, wanderStrength, wallRepulsionStrength,
+                        3000, 60, opacity, petColor); // 3000点，60FPS
+                    break;
+            }
+        }
+
+        // 添加一个方法来检测当前性能并自动调整
+        public void AutoOptimizePerformance()
+        {
+            if (currentFps < 20)
+            {
+                // 性能很差，使用高性能模式
+                ApplyPerformancePreset("high_performance");
+                System.Diagnostics.Debug.WriteLine("自动切换到高性能模式");
+            }
+            else if (currentFps < 40)
+            {
+                // 性能一般，使用平衡模式
+                ApplyPerformancePreset("balanced");
+                System.Diagnostics.Debug.WriteLine("自动切换到平衡模式");
+            }
+            // 如果FPS >= 40，保持当前设置
+        }
 
         public void UpdatePetSettings(double petSpeed, double rotationSpeed, double wanderStrength,
                                      double wallRepulsionStrength, int numPoints, int targetFps,
-                                     double opacity, PetColor petColor)
+                                     double opacity, PetColor petColor, bool autoOptimize = false)
         {
             this.petSpeed = petSpeed;
             this.rotationSpeed = rotationSpeed;
@@ -466,6 +820,7 @@ namespace pet
             this.wallRepulsionStrength = wallRepulsionStrength;
             this.opacity = opacity;
             this.petColor = petColor;
+            this.autoPerformanceOptimization = autoOptimize;
 
             // Update FPS
             this.targetFps = targetFps;
@@ -479,6 +834,12 @@ namespace pet
                 fishPoints = new System.Windows.Point[numPoints];
             }
 
+            // 更新缓存的渲染对象
+            UpdateCachedRenderingObjects();
+
+            // 标记需要完全重绘
+            needsFullRedraw = true;
+
             // 同时更新设置对象
             if (appSettings != null)
             {
@@ -490,6 +851,7 @@ namespace pet
                 appSettings.TargetFps = targetFps;
                 appSettings.Opacity = opacity;
                 appSettings.PetColor = petColor;
+                appSettings.AutoPerformanceOptimization = autoOptimize;
             }
         }
 
@@ -498,7 +860,8 @@ namespace pet
             CompositionTarget.Rendering -= OnRendering;
 
             // Close settings window if open
-            settingsWindow?.Close();
+            if (settingsWindow != null)
+                settingsWindow.Close();
 
             // 保存设置
             try
@@ -513,13 +876,26 @@ namespace pet
                 System.Diagnostics.Debug.WriteLine($"保存设置失败: {ex.Message}");
             }
 
+            // 清理渲染资源
+            if (writeableBitmap != null)
+            {
+                writeableBitmap = null;
+            }
+            if (cachedBrush != null)
+            {
+                cachedBrush = null;
+            }
+            pixelBuffer = null;
+            fishPoints = null;
+
             // Clean up system tray resources
             if (notifyIcon != null)
             {
                 notifyIcon.Visible = false;
                 notifyIcon.Dispose();
             }
-            contextMenu?.Dispose();
+            if (contextMenu != null)
+                contextMenu.Dispose();
 
             base.OnClosed(e);
         }

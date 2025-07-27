@@ -13,8 +13,8 @@ namespace pet
         private const double DEFAULT_ROTATION_SPEED = 0.001;
         private const double DEFAULT_WANDER_STRENGTH = 0.07;
         private const double DEFAULT_WALL_REPULSION_STRENGTH = 1000.0;
-        private const int DEFAULT_NUM_POINTS = 5000;  // 调整到最低
-        private const int DEFAULT_TARGET_FPS = 120;   // 调整到最高
+        private const int DEFAULT_NUM_POINTS = 5000;  // 恢复默认值
+        private const int DEFAULT_TARGET_FPS = 90;    // 设置默认帧率为90
         private const double DEFAULT_OPACITY = 0.8;   // 默认透明度 80%
         private const byte DEFAULT_COLOR_R = 220;     // 默认颜色 R
         private const byte DEFAULT_COLOR_G = 220;     // 默认颜色 G
@@ -75,6 +75,9 @@ namespace pet
                 // 设置开机自启动复选框
                 if (StartupCheckBox != null) StartupCheckBox.IsChecked = currentSettings.StartWithWindows;
 
+                // 设置自动性能优化复选框
+                if (AutoOptimizeCheckBox != null) AutoOptimizeCheckBox.IsChecked = currentSettings.AutoPerformanceOptimization;
+
                 // 更新显示值
                 UpdateDisplayValues();
             }
@@ -88,18 +91,18 @@ namespace pet
         {
             try
             {
-                if (SpeedValue != null && SpeedSlider != null)
-                    SpeedValue.Text = SpeedSlider.Value.ToString("F1");
+                if (SpeedTextBox != null && SpeedSlider != null)
+                    SpeedTextBox.Text = SpeedSlider.Value.ToString("F1");
                 if (RotationValue != null && RotationSlider != null)
                     RotationValue.Text = RotationSlider.Value.ToString("F4");
                 if (WanderValue != null && WanderSlider != null)
                     WanderValue.Text = WanderSlider.Value.ToString("F2");
                 if (RepulsionValue != null && RepulsionSlider != null)
                     RepulsionValue.Text = RepulsionSlider.Value.ToString("F0");
-                if (PointsValue != null && PointsSlider != null)
-                    PointsValue.Text = PointsSlider.Value.ToString("F0");
-                if (FpsValue != null && FpsSlider != null)
-                    FpsValue.Text = FpsSlider.Value.ToString("F0");
+                if (PointsTextBox != null && PointsSlider != null)
+                    PointsTextBox.Text = PointsSlider.Value.ToString("F0");
+                if (FpsTextBox != null && FpsSlider != null)
+                    FpsTextBox.Text = FpsSlider.Value.ToString("F0");
                 if (OpacityValue != null && OpacitySlider != null)
                     OpacityValue.Text = (OpacitySlider.Value * 100).ToString("F0") + "%";
             }
@@ -199,7 +202,8 @@ namespace pet
                     numPoints: currentSettings.NumPoints,
                     targetFps: currentSettings.TargetFps,
                     opacity: currentSettings.Opacity,
-                    petColor: currentSettings.PetColor
+                    petColor: currentSettings.PetColor,
+                    autoOptimize: currentSettings.AutoPerformanceOptimization
                 );
             }
             catch (Exception ex)
@@ -225,6 +229,7 @@ namespace pet
                 if (OpacitySlider != null) OpacitySlider.Value = DEFAULT_OPACITY;
                 if (ColorPicker != null) ColorPicker.SelectedColor = System.Windows.Media.Color.FromRgb(DEFAULT_COLOR_R, DEFAULT_COLOR_G, DEFAULT_COLOR_B);
                 if (StartupCheckBox != null) StartupCheckBox.IsChecked = false;
+                if (AutoOptimizeCheckBox != null) AutoOptimizeCheckBox.IsChecked = false;
 
                 // 更新显示值
                 UpdateDisplayValues();
@@ -258,6 +263,59 @@ namespace pet
             // 通知主窗口设置窗口已关闭
             mainWindow.OnSettingsWindowClosed();
             base.OnClosed(e);
+        }
+
+        // 文本框值变化处理
+        private void OnTextBoxValueChanged(object sender, TextChangedEventArgs e)
+        {
+            if (sender is TextBox textBox)
+            {
+                try
+                {
+                    if (textBox.Name == "SpeedTextBox" && double.TryParse(textBox.Text, out double speedValue))
+                    {
+                        if (speedValue >= 0.1 && speedValue <= 2.0 && SpeedSlider != null)
+                        {
+                            SpeedSlider.Value = speedValue;
+                        }
+                    }
+                    else if (textBox.Name == "PointsTextBox" && int.TryParse(textBox.Text, out int pointsValue))
+                    {
+                        if (pointsValue >= 2000 && pointsValue <= 20000 && PointsSlider != null)
+                        {
+                            PointsSlider.Value = pointsValue;
+                        }
+                    }
+                    else if (textBox.Name == "FpsTextBox" && int.TryParse(textBox.Text, out int fpsValue))
+                    {
+                        if (fpsValue >= 30 && fpsValue <= 120 && FpsSlider != null)
+                        {
+                            FpsSlider.Value = fpsValue;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"文本框值变化处理错误: {ex.Message}");
+                }
+            }
+        }
+
+        // 自动性能优化复选框变化处理
+        private void OnAutoOptimizeCheckChanged(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (sender is CheckBox checkBox)
+                {
+                    currentSettings.AutoPerformanceOptimization = checkBox.IsChecked ?? false;
+                    ApplySettings();
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"自动优化设置变化处理错误: {ex.Message}");
+            }
         }
     }
 }

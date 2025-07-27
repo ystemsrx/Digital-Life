@@ -13,9 +13,9 @@ namespace pet
         private const double DEFAULT_ROTATION_SPEED = 0.001;
         private const double DEFAULT_WANDER_STRENGTH = 0.07;
         private const double DEFAULT_WALL_REPULSION_STRENGTH = 1000.0;
-        private const int DEFAULT_NUM_POINTS = 5000;  // 恢复默认值
+        private const int DEFAULT_NUM_POINTS = 2000;  // 恢复默认值
         private const int DEFAULT_TARGET_FPS = 90;    // 设置默认帧率为90
-        private const double DEFAULT_OPACITY = 0.8;   // 默认透明度 80%
+        private const double DEFAULT_OPACITY = 0.3;   // 默认透明度 30%
         private const byte DEFAULT_COLOR_R = 220;     // 默认颜色 R
         private const byte DEFAULT_COLOR_G = 220;     // 默认颜色 G
         private const byte DEFAULT_COLOR_B = 220;     // 默认颜色 B

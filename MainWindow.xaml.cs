@@ -72,10 +72,6 @@ namespace pet
         private System.Windows.Point[] fishPoints;
         private int validPointCount = 0;
 
-        // 缓存的渲染对象以减少GC压力
-        private SolidColorBrush cachedBrush;
-        private System.Windows.Media.Color cachedColor;
-
         // 性能监控
         private int frameCount = 0;
         private DateTime lastFpsUpdate = DateTime.Now;
@@ -175,18 +171,6 @@ namespace pet
 
             // 预分配点数组
             fishPoints = new System.Windows.Point[numPoints];
-
-            // 缓存渲染对象
-            UpdateCachedRenderingObjects();
-        }
-
-        private void UpdateCachedRenderingObjects()
-        {
-            // 创建并缓存brush以减少GC压力
-            cachedColor = System.Windows.Media.Color.FromRgb(petColor.R, petColor.G, petColor.B);
-            cachedColor.A = (byte)(opacity * 255);
-            cachedBrush = new SolidColorBrush(cachedColor);
-            cachedBrush.Freeze(); // 冻结以提高性能
         }
 
         [System.Runtime.Versioning.SupportedOSPlatform("windows6.1")]
@@ -841,9 +825,6 @@ namespace pet
                 fishPoints = new System.Windows.Point[numPoints];
             }
 
-            // 更新缓存的渲染对象
-            UpdateCachedRenderingObjects();
-
             // 标记需要完全重绘
             needsFullRedraw = true;
 
@@ -888,10 +869,6 @@ namespace pet
             if (writeableBitmap != null)
             {
                 writeableBitmap = null;
-            }
-            if (cachedBrush != null)
-            {
-                cachedBrush = null;
             }
             pixelBuffer = null;
             fishPoints = null;

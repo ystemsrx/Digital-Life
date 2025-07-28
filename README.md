@@ -1,4 +1,6 @@
-(English)[README.md] | (简体中文)[README.zh.md]
+[English](README.md) | [简体中文](README.zh.md)
+
+---
 
 # Virtual Digital Life
 

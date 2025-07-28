@@ -57,6 +57,7 @@ namespace pet
         /// 保存设置到文件
         /// </summary>
         /// <param name="settings">要保存的设置</param>
+        [System.Runtime.Versioning.SupportedOSPlatform("windows")]
         public static void SaveSettings(AppSettings settings)
         {
             try
@@ -89,6 +90,7 @@ namespace pet
         /// 从文件加载设置
         /// </summary>
         /// <returns>加载的设置，如果失败则返回默认设置</returns>
+        [System.Runtime.Versioning.SupportedOSPlatform("windows")]
         public static AppSettings LoadSettings()
         {
             try
@@ -121,6 +123,7 @@ namespace pet
         /// 更新注册表中的开机自启动设置
         /// </summary>
         /// <param name="enable">是否启用开机自启动</param>
+        [System.Runtime.Versioning.SupportedOSPlatform("windows")]
         private static void UpdateStartupRegistry(bool enable)
         {
             try
@@ -132,7 +135,12 @@ namespace pet
                         if (enable)
                         {
                             // 获取当前执行文件的路径
-                            string exePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
+                            // 对于 .NET 8.0 和单文件发布，直接使用 AppContext.BaseDirectory
+                            string exePath = Path.Combine(System.AppContext.BaseDirectory, System.AppDomain.CurrentDomain.FriendlyName);
+                            if (!exePath.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                            {
+                                exePath += ".exe";
+                            }
 
                             // 如果是 .dll 文件（.NET Core/5+），需要使用 dotnet 运行
                             if (exePath.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
@@ -174,6 +182,7 @@ namespace pet
         /// 检查是否已启用开机自启动
         /// </summary>
         /// <returns>如果启用了开机自启动则返回 true</returns>
+        [System.Runtime.Versioning.SupportedOSPlatform("windows")]
         public static bool IsStartupEnabled()
         {
             try
@@ -199,6 +208,7 @@ namespace pet
         /// 设置开机自启动
         /// </summary>
         /// <param name="enable">是否启用</param>
+        [System.Runtime.Versioning.SupportedOSPlatform("windows")]
         public static void SetStartupEnabled(bool enable)
         {
             try

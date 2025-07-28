@@ -26,6 +26,7 @@ namespace pet
         // 当前设置
         private AppSettings currentSettings;
 
+        [System.Runtime.Versioning.SupportedOSPlatform("windows")]
         public SettingsWindow(MainWindow parent)
         {
             InitializeComponent();
@@ -50,11 +51,13 @@ namespace pet
             }
         }
 
+        [System.Runtime.Versioning.SupportedOSPlatform("windows")]
         private void SettingsWindow_Loaded(object sender, RoutedEventArgs e)
         {
             LoadCurrentValues();
         }
 
+        [System.Runtime.Versioning.SupportedOSPlatform("windows")]
         private void LoadCurrentValues()
         {
             try
@@ -145,6 +148,7 @@ namespace pet
             }
         }
 
+        [System.Runtime.Versioning.SupportedOSPlatform("windows")]
         private void OnStartupCheckChanged(object sender, RoutedEventArgs e)
         {
             try
@@ -243,6 +247,7 @@ namespace pet
             }
         }
 
+        [System.Runtime.Versioning.SupportedOSPlatform("windows")]
         private void OnCloseClick(object sender, RoutedEventArgs e)
         {
             try

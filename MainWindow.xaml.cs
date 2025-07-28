@@ -96,6 +96,7 @@ namespace pet
         private bool useRegionalUpdate = false; // 默认关闭区域更新，避免轨迹问题
         private bool autoPerformanceOptimization = false; // 默认关闭自动性能优化
 
+        [System.Runtime.Versioning.SupportedOSPlatform("windows6.1")]
         public MainWindow()
         {
             InitializeComponent();
@@ -104,6 +105,7 @@ namespace pet
             InitializeSystemTray();
         }
 
+        [System.Runtime.Versioning.SupportedOSPlatform("windows")]
         private void LoadSettings()
         {
             try
@@ -187,6 +189,7 @@ namespace pet
             cachedBrush.Freeze(); // 冻结以提高性能
         }
 
+        [System.Runtime.Versioning.SupportedOSPlatform("windows6.1")]
         private void InitializeSystemTray()
         {
             // Create context menu
@@ -208,6 +211,7 @@ namespace pet
             this.StateChanged += MainWindow_StateChanged;
         }
 
+        [System.Runtime.Versioning.SupportedOSPlatform("windows6.1")]
         private Icon CreateTrayIcon()
         {
             // Create a simple icon for the system tray
@@ -238,6 +242,7 @@ namespace pet
             System.Windows.Application.Current.Shutdown();
         }
 
+        [System.Runtime.Versioning.SupportedOSPlatform("windows")]
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
             // Make window click-through
@@ -247,6 +252,7 @@ namespace pet
             Console.WriteLine("Right-click the tray icon to exit.");
         }
 
+        [System.Runtime.Versioning.SupportedOSPlatform("windows")]
         private void MakeWindowClickThrough()
         {
             var hwnd = new WindowInteropHelper(this).Handle;
@@ -737,6 +743,7 @@ namespace pet
             }
         }
 
+        [System.Runtime.Versioning.SupportedOSPlatform("windows")]
         private void OnSettingsClick(object sender, EventArgs e)
         {
             if (settingsWindow == null || !settingsWindow.IsVisible)
@@ -855,6 +862,7 @@ namespace pet
             }
         }
 
+        [System.Runtime.Versioning.SupportedOSPlatform("windows6.1")]
         protected override void OnClosed(EventArgs e)
         {
             CompositionTarget.Rendering -= OnRendering;
